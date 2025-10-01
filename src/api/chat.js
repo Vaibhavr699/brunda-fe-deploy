@@ -26,33 +26,27 @@ export async function sendMessage(text, options = {}) {
       } catch {
         data = await res.text();
       }
-
-      // ✅ Normalize response so UI always receives { type, data }
       let messagePayload;
 
       if (data?.message) {
-        // server sometimes wraps the payload as a JSON string inside `message`
         if (typeof data.message === 'string') {
           try {
             const parsed = JSON.parse(data.message);
-            // parsed might be { type, data } or { text }
             if (parsed?.type && parsed?.data !== undefined) messagePayload = parsed;
             else if (parsed?.text) messagePayload = { type: 'general_response', data: parsed.text };
             else messagePayload = { type: 'general_response', data: parsed };
           } catch (e) {
-            // not JSON, use raw string
             messagePayload = { type: 'general_response', data: data.message };
           }
         } else {
-          messagePayload = data.message; // backend sent object
+          messagePayload = data.message;
         }
       } else if (data?.text && typeof data.text === 'object') {
-        messagePayload = data.text; // backend sent { text: { type, data } }
+        messagePayload = data.text;
       } else if (typeof data?.text === 'string') {
         messagePayload = { type: 'general_response', data: data.text };
       } else if (typeof data === 'string') {
-        // server returned raw string (maybe JSON string already parsed above)
-        // try parse JSON inside string
+
         try {
           const parsed = JSON.parse(data);
           if (parsed?.type && parsed?.data !== undefined) messagePayload = parsed;
@@ -65,9 +59,8 @@ export async function sendMessage(text, options = {}) {
         messagePayload = { type: 'unknown', data };
       }
 
-      console.log('chatResponse', messagePayload);
+      // console.log('chatResponse', messagePayload);
 
-      // return both a simple `text` for existing UI and the full normalized payload
       let textValue = '';
       if (typeof messagePayload === 'string') textValue = messagePayload;
       else if (messagePayload && typeof messagePayload.data === 'string') textValue = messagePayload.data;

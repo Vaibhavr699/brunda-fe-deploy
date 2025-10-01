@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Navbar } from "./components/Navbar";
 import { Sidebar } from './components/Sidebar';
+import { Routes, Route } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
+import ChatWindow from './components/tabs/ChatWindow';
 
 function App() {
-  const COLLAPSE_KEY = 'sidebar_collapsed_v1';
-  const [activeTab, setActiveTab] = useState('ai-assistant');
-
+  const COLLAPSE_KEY = 'sidebar_collapsed';
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
       const raw = localStorage.getItem(COLLAPSE_KEY);
-      return raw ? JSON.parse(raw) : true; // default collapsed
+      return raw ? JSON.parse(raw) : true;
     } catch (e) {
       return true;
     }
@@ -27,39 +27,23 @@ function App() {
   };
 
   const closeMobile = () => setIsMobileOpen(false);
-
-  // ✅ persist collapse state
   useEffect(() => {
     try {
       localStorage.setItem(COLLAPSE_KEY, JSON.stringify(isCollapsed));
     } catch (e) {}
   }, [isCollapsed]);
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'ai-assistant':
-        return <Dashboard activeTab={activeTab} setActiveTab={setActiveTab} />;
-      default:
-        return <Dashboard activeTab={activeTab} setActiveTab={setActiveTab} />;
-    }
-  };
-
   return (
     <div className="flex flex-col h-screen">
-      <Navbar
-        onToggleSidebar={toggleSidebar}
-        isCollapsed={isCollapsed}
-        isMobileOpen={isMobileOpen}
-      />
+      <Navbar onToggleSidebar={toggleSidebar} isCollapsed={isCollapsed} isMobileOpen={isMobileOpen} />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          isCollapsed={isCollapsed}
-          isMobileOpen={isMobileOpen}
-          closeMobile={closeMobile}
-        />
-        <div className="flex-1 overflow-auto">{renderContent()}</div>
+        <Sidebar isCollapsed={isCollapsed} isMobileOpen={isMobileOpen} closeMobile={closeMobile} />
+        <div className="flex-1 overflow-auto">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/ai-assistant" element={<ChatWindow />} />
+          </Routes>
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,10 @@
 import { MessageSquare } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-export const Sidebar = ({ activeTab, setActiveTab, isCollapsed = true, isMobileOpen = false, closeMobile = () => { } }) => {
-
+export const Sidebar = ({ isCollapsed = true, isMobileOpen = false, closeMobile = () => { } }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activeTab = location.pathname.replace(/^\//, '') || 'ai-assistant';
   const handleKeyActivate = (fn) => (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -15,13 +18,13 @@ export const Sidebar = ({ activeTab, setActiveTab, isCollapsed = true, isMobileO
       label: 'AI Assistant',
       icon: MessageSquare,
     },
+    
   ];
-
   const renderButtons = (closeAfter = false) =>
     tabs.map((tab) => {
       const Icon = tab.icon;
       const handleClick = () => {
-        setActiveTab(tab.id);
+        navigate(`/${tab.id}`);
         if (closeAfter) closeMobile();
       };
       return (
@@ -31,9 +34,8 @@ export const Sidebar = ({ activeTab, setActiveTab, isCollapsed = true, isMobileO
             }`}
           onClick={handleClick}
           onKeyDown={handleKeyActivate(() => handleClick())}
-          aria-current={activeTab === tab.id}
         >
-          <Icon size={20} aria-hidden="true" />
+          <Icon size={20} />
           {(!isCollapsed || isMobileOpen) && <span className="font-medium">{tab.label}</span>}
         </button>
       );
@@ -42,13 +44,8 @@ export const Sidebar = ({ activeTab, setActiveTab, isCollapsed = true, isMobileO
   const desktopSidebar = (
     <div
       className={`hidden md:flex bg-[#e2e9ef] h-full flex-col transition-all duration-300 
-        ${isCollapsed
-          ? `
-          w-18 md:w-20 lg:w-[75px] 
-        `
-          : `
-          w-[160px] md:w-[200px] lg:w-[280px] xl:w-[320px] 
-        `
+        ${isCollapsed? `w-18 md:w-20 lg:w-[75px] `: 
+          `w-[160px] md:w-[200px] lg:w-[280px] xl:w-[320px] `
         }`}
     >
       <div className="p-4 flex flex-col  gap-3">{renderButtons(false)}</div>
@@ -61,10 +58,9 @@ export const Sidebar = ({ activeTab, setActiveTab, isCollapsed = true, isMobileO
         className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${isMobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0"
           }`}
         onClick={closeMobile}
-        aria-hidden="true"
       />
       <div
-        className={`bg-[#e2e9ef] fixed left-0 top-22 h-[calc(100%-4rem)] z-50 flex flex-col transition-transform duration-600 w-60
+        className={`bg-[#e2e9ef] fixed left-0 top-24 h-[calc(100%-4rem)] z-50 flex flex-col transition-transform duration-600 w-60
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="p-4 flex flex-col gap-3">{renderButtons(true)}</div>

@@ -12,14 +12,12 @@ const LoadingSpinner = ({
         overlay ? "fixed inset-0 bg-white z-50" : ""
       } flex flex-col items-center justify-center ${className}`}
       role="status"
-      aria-live="polite"
     >
       <svg
         width={size}
         height={size}
         viewBox="0 0 50 50"
         className="animate-spin"
-        aria-hidden="true"
       >
         <defs>
           <linearGradient id="spinner-gradient" x1="0%" x2="100%">

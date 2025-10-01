@@ -1,4 +1,3 @@
-import React from 'react';
 
 export const EntrepreneurialResponse = ({ payload }) => {
   const data = payload?.data || payload || {};
@@ -14,8 +13,8 @@ export const EntrepreneurialResponse = ({ payload }) => {
       <div className="mt-3">
         <h3 className="text-sm font-semibold text-gray-800 mb-2">{title}</h3>
         <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-          {items.map((it, i) => (
-            <li key={i}>{it}</li>
+          {items.map((item, i) => (
+            <li key={i}>{item}</li>
           ))}
         </ul>
       </div>
@@ -65,7 +64,6 @@ export const EntrepreneurialResponse = ({ payload }) => {
           <div className="mt-3 grid grid-cols-1 gap-4">
             {data.execution_support.automated_content && data.execution_support.automated_content.map((c, i) => {
               const type = (c.type || '').toLowerCase();
-              // Email formatting: show subject clearly and body as a callout
               if ((type.includes('email') || (c.title && c.title.toLowerCase().includes('email'))) && c.draft) {
                 const raw = normalizeDraft(c.draft);
                 const subjectMatch = raw.match(/Subject:\s*(.*)/i);
@@ -79,7 +77,6 @@ export const EntrepreneurialResponse = ({ payload }) => {
                 );
               }
 
-              // Landing page preview: visual box + source toggle
               if (type.includes('landing') || (c.title && c.title.toLowerCase().includes('landing'))) {
                 const rawHtml = normalizeDraft(c.draft);
                 return (
@@ -88,15 +85,9 @@ export const EntrepreneurialResponse = ({ payload }) => {
                     <div className="mt-3 border rounded overflow-hidden">
                       <div className="p-4 bg-white" dangerouslySetInnerHTML={{ __html: rawHtml }} />
                     </div>
-                    <details className="mt-3 text-xs text-gray-600">
-                      <summary className="cursor-pointer">Show HTML source</summary>
-                      <pre className="text-xs whitespace-pre-wrap mt-2 bg-gray-50 p-2 rounded">{rawHtml}</pre>
-                    </details>
                   </div>
                 );
               }
-
-              // default: show draft
               return (
                 <div key={i} className="p-4 bg-white border rounded-lg shadow-sm">
                   <div className="text-sm font-semibold text-gray-900">{c.title || c.type}</div>

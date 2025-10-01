@@ -73,10 +73,9 @@ export function formatEntrepreneurial(data) {
 
 export default function parseResponse(payload) {
   if (!payload) return '';
-  if (payload.type === 'entrepreneurial_response' || payload.type === 'entrepreneurial') {
+  if (payload.type === 'entrepreneurial_response') {
     return formatEntrepreneurial(payload.data || payload);
   }
-  // fallback: if payload.data is string, return it
   if (typeof payload.data === 'string') return payload.data;
   if (typeof payload === 'string') return payload;
   try {
@@ -85,6 +84,9 @@ export default function parseResponse(payload) {
     return String(payload.data || payload);
   }
 }
+
+
+
 
 
 

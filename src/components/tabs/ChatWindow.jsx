@@ -1,11 +1,12 @@
-import { FolderUp, Send, FileText } from "lucide-react";
+import { FolderUp, Send, X } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { sendMessage as apiSendMessage } from "../../api/chat";
 import parseResponse from "../../utils/responseParser";
 import EntrepreneurialResponse from "../../components/EntrepreneurialResponse";
 import ThinkingLoader from "../ThinkingLoader";
+import { useNavigate } from 'react-router-dom';
 
-const DRAFT_KEY = "chat_draft_v1";
+const DRAFT_KEY = "chat_draft";
 
 const initialState = {
   chats: [],
@@ -29,15 +30,16 @@ function reducer(state, action) {
     default:
       return state;
   }
-}
+};
 
-export const ChatWindow = ({ activeTab, setActiveTab }) => {
+export const ChatWindow = ({ activeTab }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [draft, setDraft] = useState("");
   const [uploadingFile, setUploadingFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
@@ -104,27 +106,16 @@ export const ChatWindow = ({ activeTab, setActiveTab }) => {
         day: "numeric",
       });
 
-      let aiText = '';
-      if (!aiResponse) {
-        aiText = '';
-      } else if (typeof aiResponse === 'string') {
-        aiText = aiResponse;
-      } else if (typeof aiResponse.text === 'string' && aiResponse.text.length > 0) {
-        aiText = aiResponse.text;
-      } else if (aiResponse.payload && typeof aiResponse.payload.data === 'string') {
-        aiText = aiResponse.payload.data;
-      } else if (aiResponse.data && typeof aiResponse.data === 'string') {
-        aiText = aiResponse.data;
-      } else if (aiResponse.payload && aiResponse.payload.data) {
-        try { aiText = JSON.stringify(aiResponse.payload.data, null, 2); } catch (e) { aiText = String(aiResponse.payload.data); }
-      } else {
-        try { aiText = JSON.stringify(aiResponse, null, 2); } catch (e) { aiText = String(aiResponse); }
-      }
+      const displayTextRaw = aiResponse && (aiResponse.text ?? "");
+      const finalPayload = aiResponse && (aiResponse.payload ?? null);
+      const respType =
+        (finalPayload && finalPayload.type) ||
+        (aiResponse && aiResponse.type) ||
+        "general_response";
 
-      let displayText = aiText;
-      const respType = (aiResponse && (aiResponse.payload?.type || aiResponse.type)) || 'general_response';
-      if (respType === 'entrepreneurial_response' || respType === 'entrepreneurial') {
-        displayText = parseResponse(aiResponse.payload || aiResponse);
+      let displayText = displayTextRaw || "";
+      if (respType === "entrepreneurial_response" && finalPayload) {
+        displayText = parseResponse(finalPayload);
       }
 
       const aiMsg = {
@@ -132,23 +123,19 @@ export const ChatWindow = ({ activeTab, setActiveTab }) => {
         sender: "ai",
         text: displayText,
         type: respType,
-        payload: aiResponse.payload || aiResponse,
+        payload: finalPayload,
         timestamp: aiTimestamp,
       };
-
-      console.debug('aiResponse (raw):', aiResponse);
-      console.debug('aiText (extracted):', aiText);
-      console.debug('aiMsg (to dispatch):', aiMsg);
 
       dispatch({ type: "ADD_MESSAGE", payload: aiMsg });
       dispatch({ type: "SET_STATUS", payload: "idle" });
     } catch (err) {
-  dispatch({
-    type: "SET_ERROR",
-    payload: err.message || "Failed to send message",
-  });
-  dispatch({ type: "SET_STATUS", payload: "idle" });
-}
+      dispatch({
+        type: "SET_ERROR",
+        payload: err.message || "Failed to send message",
+      });
+      dispatch({ type: "SET_STATUS", payload: "idle" });
+    }
   };
 
   const handleFileChange = (e) => {
@@ -170,7 +157,7 @@ export const ChatWindow = ({ activeTab, setActiveTab }) => {
   };
 
   return (
-    <main className="flex flex-col h-[87vh] w-full bg-gray-50 p-2 font-ubuntu">
+    <main className="flex flex-col h-[86vh] w-full bg-gray-50 p-2 font-ubuntu">
       <header className="p-4 flex items-center justify-between bg-gray-50">
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-gray-900">
@@ -183,7 +170,7 @@ export const ChatWindow = ({ activeTab, setActiveTab }) => {
       </header>
 
       <div className="flex-1 flex overflow-hidden mt-2 bg-white rounded-xl shadow-lg">
-        <aside className="hidden md:flex md:w-64 bg-gray-50 border border-gray-400 flex-col rounded-l-xl">
+        <aside className="hidden md:flex md:w-50 bg-gray-50 border border-gray-400 flex-col rounded-l-xl">
           <div className="p-4 border-b border-gray-300 flex items-center justify-between">
             <h2 className="font-semibold text-lg text-gray-800">New Chat</h2>
             <button
@@ -202,7 +189,7 @@ export const ChatWindow = ({ activeTab, setActiveTab }) => {
                     }`}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setActiveTab(chat.id)}
+                  onClick={() => navigate(`/\${chat.id}`)}
                 >
                   {chat.text}
                 </div>
@@ -213,9 +200,9 @@ export const ChatWindow = ({ activeTab, setActiveTab }) => {
           </div>
         </aside>
 
-        <section className="flex-1 flex flex-col w-full border border-gray-400">
+        <section className="flex-1 flex flex-col w-full border border-gray-400 rounded-r-xl">
           {state.messages.length === 0 ? (
-            <div className="flex-1 flex flex-col justify-center items-center px-4 text-center">
+            <div className="flex-1 flex flex-col justify-center items-center px-4 text-center ">
               <p className="text-gray-500 text-sm md:text-base max-w-md">
                 Get instant answers on launching, managing, or scaling your
                 startup — from legal basics to business strategy.
@@ -224,25 +211,33 @@ export const ChatWindow = ({ activeTab, setActiveTab }) => {
           ) : (
             <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 flex flex-col gap-3">
               {state.messages.map((msg) => (
-                <div key={msg.id} className={`w-full flex ${msg.sender === "ai" ? 'justify-start' : 'justify-end'} px-2 mb-3`}>
-                  <div className={`max-w-full sm:max-w-xs md:max-w-md p-3 rounded-xl shadow ${msg.sender === "ai" ? "bg-gray-100 text-gray-900" : "bg-blue-600 text-white"}`}>
+                <div
+                  key={msg.id}
+                  className={`w-full flex ${msg.sender === "ai" ? "justify-start" : "justify-end"
+                    } px-2 mb-3`}
+                >
+                  <div
+                    className={`max-w-full sm:max-w-xs md:max-w-md p-3 rounded-xl shadow ${msg.sender === "ai"
+                        ? "bg-gray-100 text-gray-900"
+                        : "bg-blue-600 text-white"
+                      }`}
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-semibold text-sm">
                         {msg.sender === "ai" ? "AI Assistant" : "You"}
                       </span>
-                      <span
-                        className={`text-xs ${msg.sender === "ai" ? "text-gray-500" : "text-blue-200"
-                          }`}
-                      >
+                      <span className="text-xs ml-1 text-gray-300">
                         {msg.timestamp}
                       </span>
                     </div>
-                    {msg.type === 'entrepreneurial_response' && msg.payload ? (
+                    {msg.type === "entrepreneurial_response" && msg.payload ? (
                       <div className="">
                         <EntrepreneurialResponse payload={msg.payload} />
                       </div>
                     ) : (
-                      <p className="text-base md:text-lg whitespace-pre-wrap">{msg.text}</p>
+                      <p className="text-base md:text-lg whitespace-pre-wrap">
+                        {msg.text}
+                      </p>
                     )}
                     {msg.file && (
                       <div className="mt-1 flex items-center gap-2">
@@ -259,7 +254,7 @@ export const ChatWindow = ({ activeTab, setActiveTab }) => {
             </div>
           )}
           <form
-            className="p-3 md:p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0"
+            className="p-3 md:p-4 border-t border-gray-200 rounded-b-lg bg-gray-50 flex-shrink-0"
             onSubmit={handleSend}
           >
             <div className="flex flex-wrap items-center bg-white border border-gray-300 rounded-full px-3 py-2 shadow-sm w-full">
@@ -294,32 +289,27 @@ export const ChatWindow = ({ activeTab, setActiveTab }) => {
                 </button>
 
                 {uploadingFile && (
-                  <svg
-                    className="absolute top-0 left-0 w-10 h-10"
-                    viewBox="0 0 36 36"
-                  >
-                    <circle
-                      className="text-gray-300"
-                      strokeWidth="4"
-                      stroke="currentColor"
-                      fill="transparent"
-                      r="16"
-                      cx="18"
-                      cy="18"
-                    />
-                    <circle
-                      className="text-blue-500"
-                      strokeWidth="4"
-                      strokeDasharray="100"
-                      strokeDashoffset={100 - uploadProgress}
-                      strokeLinecap="round"
-                      stroke="currentColor"
-                      fill="transparent"
-                      r="16"
-                      cx="18"
-                      cy="18"
-                    />
-                  </svg>
+                  <>
+                    <svg
+                      className="absolute top-0 left-0 w-10 h-10"
+                      viewBox="0 0 36 36"
+                    >
+                      <circle className="text-gray-300" strokeWidth="4" stroke="currentColor" fill="transparent" r="16" cx="18" cy="18" />
+                      <circle className="text-green-400" strokeWidth="4" strokeDasharray="100" strokeDashoffset={100 - uploadProgress} strokeLinecap="round" stroke="currentColor" fill="transparent" r="16" cx="18" cy="18"/>
+                    </svg>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadingFile(null);
+                        setUploadProgress(0);
+                        if (fileInputRef.current)
+                          fileInputRef.current.value = "";
+                      }}
+                      className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 shadow hover:bg-red-600 cursor-pointer"
+                    >
+                      <X size={14} className="text-black" />
+                    </button>
+                  </>
                 )}
               </div>
 
