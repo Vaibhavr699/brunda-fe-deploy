@@ -157,20 +157,20 @@ export const ChatWindow = ({ activeTab }) => {
   };
 
   return (
-    <main className="flex flex-col h-[86vh] w-full bg-gray-50 p-2 font-ubuntu">
-      <header className="p-4 flex items-center justify-between bg-gray-50">
+    <main className="flex flex-col h-[86vh] w-full bg-white p-2 font-roboto">
+      <header className="p-2 flex items-center justify-between bg-white">
         <div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">
             AI Assistant
           </h1>
-          <p className="text-xs md:text-sm text-gray-500 mt-1">
+          <p className="text-sm md:text-lg text-gray-500">
             Get instant answers on launching, managing, or scaling your startup
           </p>
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden mt-2 bg-white rounded-xl shadow-lg">
-        <aside className="hidden md:flex md:w-50 bg-gray-50 border border-gray-400 flex-col rounded-l-xl">
+        <aside className="hidden md:flex md:w-50 bg-white border border-gray-200 flex-col rounded-l-xl">
           <div className="p-4 border-b border-gray-300 flex items-center justify-between">
             <h2 className="font-semibold text-lg text-gray-800">New Chat</h2>
             <button
@@ -185,7 +185,7 @@ export const ChatWindow = ({ activeTab }) => {
               state.chats.map((chat) => (
                 <div
                   key={chat.id}
-                  className={`p-3 hover:bg-gray-100 cursor-pointer border-gray-300 text-sm text-gray-800 truncate ${activeTab === chat.id ? "bg-gray-200" : ""
+                  className={`p-4 hover:bg-gray-100 cursor-pointer border-gray-200 text-sm text-gray-800 truncate ${activeTab === chat.id ? "bg-gray-200" : ""
                     }`}
                   role="button"
                   tabIndex={0}
@@ -200,7 +200,7 @@ export const ChatWindow = ({ activeTab }) => {
           </div>
         </aside>
 
-        <section className="flex-1 flex flex-col w-full border border-gray-400 rounded-r-xl">
+        <section className="flex-1 flex flex-col w-full border border-gray-200 rounded-r-xl">
           {state.messages.length === 0 ? (
             <div className="flex-1 flex flex-col justify-center items-center px-4 text-center ">
               <p className="text-gray-500 text-sm md:text-base max-w-md">

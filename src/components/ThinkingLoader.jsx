@@ -14,7 +14,7 @@ const ThinkingLoader = () => {
           <span className="w-3 h-3 bg-white rounded-full animate-bounce delay-300"></span>
         </div>
 
-        <p className="text-sm text-white mt-2 opacity-70 font-ubuntu">Assistant is thinking...</p>
+        <p className="text-sm text-white mt-2 opacity-70 font-roboto">Assistant is thinking...</p>
       </div>
     </div>
   );
