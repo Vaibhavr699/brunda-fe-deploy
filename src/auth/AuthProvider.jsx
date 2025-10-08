@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-const AUTH_ENDPOINT = 'https://ab60d0106817.ngrok-free.app/api/bubble/auth/';
-const SID_KEY = 'sid';
-const JWT_KEY = 'jwt';
+const AUTH_ENDPOINT = 'http://116.202.210.102:9009/api/bubble/auth/';
+const REFRESH_ENDPOINT = 'http://116.202.210.102:9009/api/bubble/auth/refresh/';
+const JWT_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';
+const SID_KEY = 'session_id';
 
 export const AuthContext = createContext({ token: null, loading: true, error: null, retry: () => {} });
 
@@ -12,13 +13,68 @@ export function useAuth() {
 }
 
 export async function authFetch(input, init = {}) {
-  const token = sessionStorage.getItem(JWT_KEY);
-  const headers = {
+  let token = sessionStorage.getItem(JWT_KEY);
+  let headers = {
     'Content-Type': 'application/json',
     ...(init.headers || {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
-  return fetch(input, { ...init, headers });
+
+  let res = await fetch(input, { ...init, headers });
+
+  if (res.status === 401) {
+    const refreshToken = sessionStorage.getItem(REFRESH_KEY);
+    if (refreshToken) {
+      try {
+        const refreshRes = await fetch(REFRESH_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refresh: refreshToken }),
+        });
+
+        if (refreshRes.ok) {
+          const json = await refreshRes.json();
+          const newAccessToken = json?.access || json?.token || json?.jwt || json?.data?.access;
+          if (newAccessToken) {
+            sessionStorage.setItem(JWT_KEY, newAccessToken);
+            token = newAccessToken;
+            headers = {
+              'Content-Type': 'application/json',
+              ...(init.headers || {}),
+              Authorization: `Bearer ${token}`,
+            };
+            res = await fetch(input, { ...init, headers });
+          } else {
+            throw new Error('No new access token from refresh');
+          }
+        } else {
+          throw new Error('Failed to refresh token');
+        }
+      } catch (e) {
+        console.error('[AuthProvider] token refresh error:', e);
+        // If refresh fails, force re-authentication
+        try {
+          sessionStorage.removeItem(JWT_KEY);
+          sessionStorage.removeItem(REFRESH_KEY);
+          sessionStorage.removeItem(SID_KEY);
+        } catch (e) {}
+        window.location.reload();
+        return; // Prevent further execution
+      }
+    } else {
+      // No refresh token, force re-authentication
+      try {
+        sessionStorage.removeItem(JWT_KEY);
+        sessionStorage.removeItem(REFRESH_KEY);
+        sessionStorage.removeItem(SID_KEY);
+      } catch (e) {}
+      window.location.reload();
+      return; // Prevent further execution
+    }
+  }
+  return res;
 }
 
 export function getSidFromUrl() {
@@ -113,8 +169,6 @@ export const AuthProvider = ({ children }) => {
           </div>
         </div>
       )}
-
-      {/* errors are logged to console; no frontend error UI */}
     </AuthContext.Provider>
   );
 };

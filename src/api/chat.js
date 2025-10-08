@@ -1,4 +1,6 @@
-const CHAT_ENDPOINT = '/api/chat/';
+import { authFetch } from '../auth/AuthProvider';
+
+const CHAT_ENDPOINT = '/api/chat/agent/';
 
 export async function sendMessage(text, options = {}) {
   const { retries = 2 } = options;
@@ -9,7 +11,7 @@ export async function sendMessage(text, options = {}) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const reqBody = { user_input: text };
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reqBody),
