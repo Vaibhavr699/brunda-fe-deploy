@@ -1,4 +1,4 @@
-import { authFetch } from '../auth/AuthProvider';
+import { authFetch } from '../services/authService';
 
 const CHAT_ENDPOINT = '/api/chat/agent/';
 

@@ -1,10 +1,8 @@
 import { FolderUp, Send, X } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
-import { sendMessage as apiSendMessage } from "../../api/chat";
-import parseResponse from "../../utils/responseParser";
+import { chatService } from "../../services/chatService";
 import EntrepreneurialResponse from "../../components/EntrepreneurialResponse";
 import ThinkingLoader from "../ThinkingLoader";
-import { useNavigate } from 'react-router-dom';
 
 const DRAFT_KEY = "chat_draft";
 
@@ -13,6 +11,7 @@ const initialState = {
   messages: [],
   status: "idle",
   error: null,
+  currentChatId: null,
 };
 
 function reducer(state, action) {
@@ -25,8 +24,14 @@ function reducer(state, action) {
       return { ...state, status: action.payload };
     case "SET_ERROR":
       return { ...state, error: action.payload, status: "error" };
+    case "SET_CURRENT_CHAT":
+      return { ...state, currentChatId: action.payload };
+    case "ADD_CHAT":
+      return { ...state, chats: [action.payload, ...state.chats] };
+    case "LOAD_CHATS":
+      return { ...state, chats: action.payload };
     case "RESET_MESSAGES":
-      return { ...state, messages: [] };
+      return { ...state, messages: [], currentChatId: null };
     default:
       return state;
   }
@@ -39,12 +44,26 @@ export const ChatWindow = ({ activeTab }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  const navigate = useNavigate();
+
+  const isCoFounder = activeTab === "ai-co-founder";
+
+  const loadAllChats = async () => {
+    try {
+      const chats = await chatService.getAllChats();
+      dispatch({ type: "LOAD_CHATS", payload: chats });
+    } catch (err) {
+      console.error('Failed to load chats:', err);
+    }
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
     if (saved) setDraft(saved);
-  }, []);
+
+    if (isCoFounder) {
+      loadAllChats();
+    }
+  }, [isCoFounder]);
 
   useEffect(() => {
     localStorage.setItem(DRAFT_KEY, draft);
@@ -56,20 +75,57 @@ export const ChatWindow = ({ activeTab }) => {
     }
   }, [state.messages]);
 
-  useEffect(() => {
-    if (activeTab === "ai-assistant" || activeTab === "ai-co-founder") {
-      dispatch({ type: "LOAD", payload: { messages: [] } });
-    } else {
-      const chat = state.chats.find((c) => c.id === activeTab);
-      if (chat) {
-        dispatch({ type: "LOAD", payload: { messages: chat.messages } });
-      }
+  const handleNewChat = async () => {
+    try {
+      dispatch({ type: "SET_STATUS", payload: "creating" });
+      const { chatId } = await chatService.createNewChat();
+      
+      dispatch({ type: "SET_CURRENT_CHAT", payload: chatId });
+      dispatch({ type: "RESET_MESSAGES" });
+      dispatch({ type: "SET_CURRENT_CHAT", payload: chatId });
+      
+      await loadAllChats();
+      
+      dispatch({ type: "SET_STATUS", payload: "idle" });
+    } catch (err) {
+      console.error('Failed to create new chat:', err);
+      dispatch({ type: "SET_STATUS", payload: "idle" });
     }
-  }, [activeTab, state.chats]);
+  };
+
+  const loadChatHistory = async (chatId) => {
+    try {
+      dispatch({ type: "SET_STATUS", payload: "loading" });
+      const messages = await chatService.getChatMessages(chatId);
+      dispatch({ type: "LOAD", payload: { messages } });
+      dispatch({ type: "SET_CURRENT_CHAT", payload: chatId });
+      dispatch({ type: "SET_STATUS", payload: "idle" });
+    } catch (err) {
+      console.error('Failed to load chat history:', err);
+      dispatch({ type: "SET_STATUS", payload: "idle" });
+    }
+  };
 
   const handleSend = async (e) => {
     e.preventDefault();
     if (!draft.trim() && !uploadingFile) return;
+
+    let chatId = state.currentChatId;
+    
+    if (!chatId) {
+      try {
+        const { chatId: newChatId } = await chatService.createNewChat();
+        chatId = newChatId;
+        dispatch({ type: "SET_CURRENT_CHAT", payload: chatId });
+        await loadAllChats();
+      } catch (err) {
+        dispatch({
+          type: "SET_ERROR",
+          payload: "Failed to create chat. Please try again.",
+        });
+        return;
+      }
+    }
 
     const content = draft.trim() || uploadingFile?.name;
 
@@ -96,7 +152,7 @@ export const ChatWindow = ({ activeTab }) => {
     dispatch({ type: "SET_STATUS", payload: "sending" });
 
     try {
-      const aiResponse = await apiSendMessage(content, { timeoutMs: 8000 });
+      const response = await chatService.sendMessage(chatId, content);
 
       const aiTimestamp = new Date().toLocaleString("en-US", {
         hour: "numeric",
@@ -106,24 +162,12 @@ export const ChatWindow = ({ activeTab }) => {
         day: "numeric",
       });
 
-      const displayTextRaw = aiResponse && (aiResponse.text ?? "");
-      const finalPayload = aiResponse && (aiResponse.payload ?? null);
-      const respType =
-        (finalPayload && finalPayload.type) ||
-        (aiResponse && aiResponse.type) ||
-        "general_response";
-
-      let displayText = displayTextRaw || "";
-      if (respType === "entrepreneurial_response" && finalPayload) {
-        displayText = parseResponse(finalPayload);
-      }
-
       const aiMsg = {
         id: `${Date.now()}-ai`,
         sender: "ai",
-        text: displayText,
-        type: respType,
-        payload: finalPayload,
+        text: response.type === 'general_response' ? response.data : '',
+        type: response.type,
+        payload: response,
         timestamp: aiTimestamp,
       };
 
@@ -156,12 +200,32 @@ export const ChatWindow = ({ activeTab }) => {
     }
   };
 
+  if (!isCoFounder) {
+    return (
+      <main className="flex flex-col h-[86vh] w-full bg-white p-2 font-roboto">
+        <header className="p-2 flex items-center justify-between bg-white">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+              AI Assistant
+            </h1>
+            <p className="text-sm md:text-lg text-gray-500">
+              Get instant answers on launching, managing, or scaling your startup
+            </p>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-gray-500">Chat is only available in AI Co-founder</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex flex-col h-[86vh] w-full bg-white p-2 font-roboto">
       <header className="p-2 flex items-center justify-between bg-white">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-            {activeTab === "ai-co-founder" ? "AI Co-founder" : "AI Assistant"}
+            AI Co-founder
           </h1>
           <p className="text-sm md:text-lg text-gray-500">
             Get instant answers on launching, managing, or scaling your startup
@@ -172,10 +236,11 @@ export const ChatWindow = ({ activeTab }) => {
       <div className="flex-1 flex overflow-hidden mt-2 bg-white rounded-xl shadow-lg">
         <aside className="hidden md:flex md:w-50 bg-white border border-gray-200 flex-col rounded-l-xl">
           <div className="p-4 border-b border-gray-300 flex items-center justify-between">
-            <h2 className="font-semibold text-lg text-gray-800">New Chat</h2>
+            <h2 className="font-semibold text-lg text-gray-800">Chats</h2>
             <button
               className="cursor-pointer text-gray-500 hover:bg-gray-100 p-1 rounded-full transition-colors h-11 w-11 text-2xl font-bold"
-              onClick={() => dispatch({ type: "RESET_MESSAGES" })}
+              onClick={handleNewChat}
+              disabled={state.status === "creating"}
             >
               +
             </button>
@@ -185,13 +250,13 @@ export const ChatWindow = ({ activeTab }) => {
               state.chats.map((chat) => (
                 <div
                   key={chat.id}
-                  className={`p-4 hover:bg-gray-100 cursor-pointer border-gray-200 text-sm text-gray-800 truncate ${activeTab === chat.id ? "bg-gray-200" : ""
+                  className={`p-4 hover:bg-gray-100 cursor-pointer border-b border-gray-200 text-sm text-gray-800 truncate ${state.currentChatId === chat.id ? "bg-gray-200" : ""
                     }`}
                   role="button"
                   tabIndex={0}
-                  onClick={() => navigate(`/\${chat.id}`)}
+                  onClick={() => loadChatHistory(chat.id)}
                 >
-                  {chat.text}
+                  {chat.name}
                 </div>
               ))
             ) : (
@@ -224,7 +289,7 @@ export const ChatWindow = ({ activeTab }) => {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-semibold text-sm">
-                        {msg.sender === "ai" ? "AI Assistant" : "You"}
+                        {msg.sender === "ai" ? "AI Co-founder" : "You"}
                       </span>
                       <span className="text-xs ml-1 text-gray-300">
                         {msg.timestamp}
@@ -234,6 +299,10 @@ export const ChatWindow = ({ activeTab }) => {
                       <div className="">
                         <EntrepreneurialResponse payload={msg.payload} />
                       </div>
+                    ) : msg.type === "general_response" ? (
+                      <p className="text-base md:text-lg whitespace-pre-wrap">
+                        {msg.text}
+                      </p>
                     ) : (
                       <p className="text-base md:text-lg whitespace-pre-wrap">
                         {msg.text}

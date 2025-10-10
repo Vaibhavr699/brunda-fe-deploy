@@ -11,11 +11,13 @@ import InsertInvitationIcon from '@mui/icons-material/InsertInvitation';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { authService, EXTERNAL_DASHBOARD_URL } from '../services/authService';
+import { tokenStorage } from '../utils/tokenStorage';
 
 export const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const activeTab = location.pathname.replace(/^\//, '') || 'overview';
+  const activeTab = location.pathname.replace(/^\//, '') || 'ai-co-founder';
 
   const handleKeyActivate = (fn) => (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -27,8 +29,8 @@ export const Sidebar = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: HomeFilledIcon },
     { id: 'education-hub', label: 'Education Hub', icon: AutoGraphIcon },
-    { id: 'ai-co-founder', label: 'AI Co-founder', icon: PortraitIcon }, 
     { id: 'ai-assistant', label: 'AI Assistant', icon: PortraitIcon }, 
+    { id: 'ai-co-founder', label: 'AI Co-founder', icon: PortraitIcon }, 
     { id: 'consult-expert', label: 'Consult Expert', icon: AddCallIcon },
     { id: 'hire-freelancer', label: 'Hire Freelancer', icon: Groups2Icon },
     { id: 'messages', label: 'Messages', icon: MessageIcon },
@@ -44,10 +46,12 @@ export const Sidebar = () => {
     tabs.map((tab) => {
       const Icon = tab.icon;
       const handleClick = () => {
-        if (tab.id === 'ai-assistant' || tab.id === 'ai-co-founder') {
+        if (tab.id === 'ai-co-founder' || tab.id === 'ai-assistant') {
+          // Stay within the app for AI features
           navigate(`/${tab.id}`);
         } else if (tab.id === 'logout') {
-          console.log('Logout clicked');
+          // Handle logout
+          authService.logout();
         } else {
           const tabMap = {
             overview: 'overview',
@@ -61,7 +65,16 @@ export const Sidebar = () => {
             events: 'events',
             'account-settings': 'settings',
           };
-          window.location.href = `https://dashboard.thentrepreneurlab.com/entrepreneur?tab=${tabMap[tab.id]}`;
+          
+          const currentSid = tokenStorage.getSid();
+          const tabParam = tabMap[tab.id];
+          
+          let externalUrl = `${EXTERNAL_DASHBOARD_URL}?tab=${tabParam}`;
+          if (currentSid) {
+            externalUrl += `&sid=${encodeURIComponent(currentSid)}`;
+          }
+          
+          window.location.href = externalUrl;
         }
       };
 

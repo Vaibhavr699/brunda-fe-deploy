@@ -2,9 +2,9 @@ import { Bell } from "react-feather";
 
 export const Navbar = () => {
   return (
-    <div className="bg-[#27368F] text-white flex justify-between items-center px-4 py-3">
+    <div className="bg-[#27368F] text-white flex justify-between items-center px-4 py-3 overflow-x-auto">
       {/* Left: Logo */}
-      <div className="flex items-center">
+      <div className="flex items-center flex-shrink-0">
         <img
           src="https://57b659e1e9f6d373608832b183450405.cdn.bubble.io/cdn-cgi/image/w=192,h=80,f=auto,dpr=1.25,fit=contain/f1752788320114x975925293105800800/WhatsApp%20Image%202025-07-15%20at%207%2C40%2C16%20PM-Picsart-AiImageEnhancer-Picsart-AiImageEnhancer%20copy.png"
           alt="The Entrepreneur Lab Logo"
@@ -13,7 +13,7 @@ export const Navbar = () => {
       </div>
 
       {/* Right: Bell Icon, Profile Name, Profile Image */}
-      <div className="flex items-center gap-[10px]">
+      <div className="flex items-center gap-[10px] flex-shrink-0">
         {/* Bell Icon with Badge */}
         <div
           className="relative flex items-center justify-center"
@@ -45,7 +45,7 @@ export const Navbar = () => {
 
         {/* Profile Name */}
         <div
-          className="hidden md:flex flex-col justify-center gap-0"
+          className="flex flex-col justify-center gap-0"
           style={{ minWidth: "40px", minHeight: "40px" }}
         >
           <p
