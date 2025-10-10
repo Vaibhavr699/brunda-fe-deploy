@@ -57,7 +57,7 @@ export const ChatWindow = ({ activeTab }) => {
   }, [state.messages]);
 
   useEffect(() => {
-    if (activeTab === "ai-assistant") {
+    if (activeTab === "ai-assistant" || activeTab === "ai-co-founder") {
       dispatch({ type: "LOAD", payload: { messages: [] } });
     } else {
       const chat = state.chats.find((c) => c.id === activeTab);
@@ -161,7 +161,7 @@ export const ChatWindow = ({ activeTab }) => {
       <header className="p-2 flex items-center justify-between bg-white">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-            AI Assistant
+            {activeTab === "ai-co-founder" ? "AI Co-founder" : "AI Assistant"}
           </h1>
           <p className="text-sm md:text-lg text-gray-500">
             Get instant answers on launching, managing, or scaling your startup

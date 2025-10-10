@@ -1,37 +1,84 @@
-import { Bell, User } from "lucide-react";
+import { Bell } from "react-feather";
 
 export const Navbar = () => {
   return (
-    <div className="bg-[#27368F] text-white flex justify-between items-center p-3">
-      <div className="flex items-center gap-4">
+    <div className="bg-[#27368F] text-white flex justify-between items-center px-4 py-3">
+      {/* Left: Logo */}
+      <div className="flex items-center">
         <img
           src="https://57b659e1e9f6d373608832b183450405.cdn.bubble.io/cdn-cgi/image/w=192,h=80,f=auto,dpr=1.25,fit=contain/f1752788320114x975925293105800800/WhatsApp%20Image%202025-07-15%20at%207%2C40%2C16%20PM-Picsart-AiImageEnhancer-Picsart-AiImageEnhancer%20copy.png"
           alt="The Entrepreneur Lab Logo"
-          className="h-16 w-auto object-contain cursor-pointer"
+          className="w-[150px] h-auto object-contain cursor-pointer"
         />
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="relative cursor-pointer p-2 rounded-full hover:bg-white transition-colors group">
-          <Bell size={22} className="text-white group-hover:text-[#27368F]" />
-          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-sm rounded-full h-4 w-4 flex items-center justify-center text-white">
+      {/* Right: Bell Icon, Profile Name, Profile Image */}
+      <div className="flex items-center gap-[10px]">
+        {/* Bell Icon with Badge */}
+        <div
+          className="relative flex items-center justify-center"
+          style={{ width: "40px", height: "40px" }}
+        >
+          <button
+            className="flex items-center justify-center rounded-full hover:bg-white hover:-[#27368F] transition-all duration-200 cursor-pointer bg-transparent border-0"
+            style={{ width: "34px", height: "34px" }}
+          >
+            <Bell
+              size={20}
+              color="white"
+              aria-label="Notifications"
+            />
+          </button>
+          <div
+            className="absolute bg-[#EF2F15] text-white text-[8px] font-semibold rounded-full flex items-center justify-center border border-gray-400 border-width-1 leading-none"
+            style={{
+              width: "18px",
+              height: "18px",
+              top: "2px",
+              right: "2px",
+              lineHeight: "1.4",
+            }}
+          >
             2
-          </span>
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-            Coming soon!
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-800"></div>
           </div>
         </div>
 
+        {/* Profile Name */}
+        <div
+          className="hidden md:flex flex-col justify-center gap-0"
+          style={{ minWidth: "40px", minHeight: "40px" }}
+        >
+          <p
+            className="text-[16px] font-medium text-white text-right whitespace-nowrap"
+            style={{ lineHeight: "1.6", fontWeight: "400" }}
+          >
+            Brunda
+          </p>
+          <p
+            className="text-[12px] text-white text-right whitespace-nowrap opacity-75"
+            style={{ lineHeight: "1", fontWeight: "400" }}
+          >
+            Entrepreneur
+          </p>
+        </div>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden md:block">
-            <p className="text-md font-medium">Brunda</p>
-            <p className="text-sm opacity-75">Entrepreneur</p>
-          </div>
-          <div className="bg-gray-300 rounded-full p-1 cursor-pointer">
-            <User size={28} className="text-[#27368F]" />
-          </div>
+        {/* Profile Image */}
+        <div
+          className="rounded-full border border-white cursor-pointer flex items-center justify-center overflow-hidden"
+          style={{
+            width: "38px",
+            height: "38px",
+          }}
+        >
+          <img
+            src="https://57b659e1e9f6d373608832b183450405.cdn.bubble.io/f1752782370428x517428081080854300/user.svg"
+            alt="User Profile"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+            }}
+          />
         </div>
       </div>
     </div>

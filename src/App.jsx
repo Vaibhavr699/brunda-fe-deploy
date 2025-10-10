@@ -11,9 +11,11 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <div className="flex-1 overflow-auto">
-          <Routes>
-            <Route path="/ai-assistant" element={<ChatWindow />} />
-          </Routes>
+            <Routes>
+              <Route path="/ai-assistant" element={<ChatWindow activeTab="ai-assistant" />} />
+              <Route path="/ai-co-founder" element={<ChatWindow activeTab="ai-co-founder" />} />
+            </Routes>
+          
         </div>
       </div>
     </div>
