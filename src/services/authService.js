@@ -1,4 +1,4 @@
-import { tokenStorage, getSidFromUrl } from '../utils/tokenStorage';
+import { tokenStorage } from '../utils/tokenStorage';
 
 const BASE_URL = import.meta.env.VITE_CHAT_API_BASE_URL;
 const AUTH_ENDPOINT = `${BASE_URL}/api/bubble/auth/`;
@@ -7,18 +7,8 @@ const EXTERNAL_DASHBOARD_URL = import.meta.env.VITE_EXTERNAL_DASHBOARD_URL;
 
 export const authService = {
   getSidForAuth: () => {
-    const urlSid = getSidFromUrl();
-    const storedSid = tokenStorage.getSid();
-    
-    if (urlSid) {
-      return urlSid;
-    }
-    
-    if (storedSid) {
-      return storedSid;
-    }
-    
-    throw new Error('No session ID available');
+    // Hardcoded session ID as requested
+    return 'fe9964a0-e35c-4239-8b6f-d8ec35b9bbcb';
   },
 
   authenticateWithSid: async (sid) => {

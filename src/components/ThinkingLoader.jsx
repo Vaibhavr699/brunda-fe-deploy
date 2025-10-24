@@ -10,7 +10,9 @@ const ThinkingLoader = () => {
 
         <div className="flex items-center gap-1 h-6">
           <span className="w-3 h-3 bg-white rounded-full animate-bounce delay-0"></span>
-          <span className="w-3 h-3 bg-white rounded-full animate-bounce delay-150"></span>
+          <span className="w-3 h-3 bg-white rounded-full animate-bounce delay-100"></span>
+          <span className="w-3 h-3 bg-white rounded-full animate-bounce delay-170"></span>
+          <span className="w-3 h-3 bg-white rounded-full animate-bounce delay-240"></span>
           <span className="w-3 h-3 bg-white rounded-full animate-bounce delay-300"></span>
         </div>
 

@@ -1,4 +1,4 @@
-import { FolderUp, Send, X } from "lucide-react";
+import { FolderUp, Send, X, Download } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { chatService } from "../../services/chatService";
 import EntrepreneurialResponse from "../../components/EntrepreneurialResponse";
@@ -200,6 +200,34 @@ export const ChatWindow = ({ activeTab }) => {
     }
   };
 
+  const handleImageDownload = async (imageUrl) => {
+    try {
+      // Fetch the image
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `generated-logo-${Date.now()}.png`; // Default filename
+      document.body.appendChild(link);
+      
+      // Trigger the download
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Failed to download image:', error);
+      // Fallback to opening in new tab if download fails
+      window.open(imageUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   if (!isCoFounder) {
     return (
       <main className="flex flex-col h-[86vh] w-full bg-white p-2 font-roboto">
@@ -283,7 +311,7 @@ export const ChatWindow = ({ activeTab }) => {
                 >
                   <div
                     className={`max-w-full sm:max-w-xs md:max-w-md p-3 rounded-xl shadow ${msg.sender === "ai"
-                        ? "bg-gray-100 text-gray-900"
+                        ? "bg-gray-100 text-gray-800"
                         : "bg-blue-600 text-white"
                       }`}
                   >
@@ -291,7 +319,7 @@ export const ChatWindow = ({ activeTab }) => {
                       <span className="font-semibold text-sm">
                         {msg.sender === "ai" ? "AI Co-founder" : "You"}
                       </span>
-                      <span className="text-xs ml-1 text-gray-300">
+                      <span className={`text-xs ml-1 ${msg.sender === "ai" ? "text-gray-500" : "text-gray-300"}`}>
                         {msg.timestamp}
                       </span>
                     </div>
@@ -299,14 +327,168 @@ export const ChatWindow = ({ activeTab }) => {
                       <div className="">
                         <EntrepreneurialResponse payload={msg.payload} />
                       </div>
+                    ) : msg.type === "image_response" && msg.payload?.logo ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="relative group">
+                          <img 
+                            src={msg.payload.logo} 
+                            alt="Generated logo" 
+                            className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.nextSibling.style.display = 'block';
+                            }}
+                          />
+                          <button
+                            onClick={() => handleImageDownload(msg.payload.logo)}
+                            className="absolute top-2 right-2 bg-white/90 hover:bg-white p-2 rounded-full shadow-md transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
+                            title="Download image"
+                          >
+                            <Download size={20} className="text-gray-700" />
+                          </button>
+                          <p className="text-sm text-gray-600 mt-2" style={{ display: 'none' }}>
+                            Failed to load image
+                          </p>
+                        </div>
+                      </div>
                     ) : msg.type === "general_response" ? (
-                      <p className="text-base md:text-lg whitespace-pre-wrap">
-                        {msg.text}
-                      </p>
+                      <div className="text-base md:text-lg space-y-4">
+                        {msg.text.split('\n').map((line, idx) => {
+                          const trimmedLine = line.trim();
+                          
+                          // Skip empty lines
+                          if (!trimmedLine) {
+                            return <div key={idx} className="h-2" />;
+                          }
+                          
+                          // Check for bold markdown headings (e.g., **Domain**: or **Problem**)
+                          const boldHeadingMatch = trimmedLine.match(/^\*\*([^*]+)\*\*:?\s*(.*)$/);
+                          if (boldHeadingMatch) {
+                            const [, heading, content] = boldHeadingMatch;
+                            return (
+                              <div key={idx} className="mt-3">
+                                <h4 className="font-bold text-gray-800 text-lg mb-1">
+                                  {heading}
+                                </h4>
+                                {content && (
+                                  <p className="text-gray-700 leading-relaxed ml-4">
+                                    {content}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
+                          
+                          // Check if it's a numbered list item
+                          if (/^\d+\./.test(trimmedLine)) {
+                            const content = trimmedLine.replace(/^\d+\.\s*/, '').trim();
+                            // Handle bold text within list items
+                            const formattedContent = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                            return (
+                              <div key={idx} className="ml-4 text-gray-700 leading-relaxed">
+                                <span className="font-semibold mr-2">•</span>
+                                <span dangerouslySetInnerHTML={{ __html: formattedContent }} />
+                              </div>
+                            );
+                          }
+                          
+                          // Check if it's a bullet list
+                          if (/^[•\-\*]\s/.test(trimmedLine)) {
+                            const content = trimmedLine.replace(/^[•\-\*]\s*/, '').trim();
+                            const formattedContent = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                            return (
+                              <div key={idx} className="ml-4 text-gray-700 leading-relaxed">
+                                <span className="font-semibold mr-2">•</span>
+                                <span dangerouslySetInnerHTML={{ __html: formattedContent }} />
+                              </div>
+                            );
+                          }
+                          
+                          // Check if it's a heading (text followed by colon)
+                          if (trimmedLine.endsWith(':') && trimmedLine.length < 100) {
+                            return (
+                              <h4 key={idx} className="font-semibold text-gray-800 text-base mt-3 mb-1">
+                                {trimmedLine}
+                              </h4>
+                            );
+                          }
+                          
+                          // Regular paragraph with bold text support
+                          const formattedLine = trimmedLine.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                          return (
+                            <p key={idx} className="text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine }} />
+                          );
+                        })}
+                      </div>
                     ) : (
-                      <p className="text-base md:text-lg whitespace-pre-wrap">
-                        {msg.text}
-                      </p>
+                      <div className="text-base md:text-lg space-y-4">
+                        {msg.text.split('\n').map((line, idx) => {
+                          const trimmedLine = line.trim();
+                          
+                          // Skip empty lines
+                          if (!trimmedLine) {
+                            return <div key={idx} className="h-2" />;
+                          }
+                          
+                          // Check for bold markdown headings (e.g., **Domain**: or **Problem**)
+                          const boldHeadingMatch = trimmedLine.match(/^\*\*([^*]+)\*\*:?\s*(.*)$/);
+                          if (boldHeadingMatch) {
+                            const [, heading, content] = boldHeadingMatch;
+                            return (
+                              <div key={idx} className="mt-3">
+                                <h4 className="font-bold text-gray-800 text-lg mb-1">
+                                  {heading}
+                                </h4>
+                                {content && (
+                                  <p className="text-gray-700 leading-relaxed ml-4">
+                                    {content}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
+                          
+                          // Check if it's a numbered list item
+                          if (/^\d+\./.test(trimmedLine)) {
+                            const content = trimmedLine.replace(/^\d+\.\s*/, '').trim();
+                            // Handle bold text within list items
+                            const formattedContent = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                            return (
+                              <div key={idx} className="ml-4 text-gray-700 leading-relaxed">
+                                <span className="font-semibold mr-2">•</span>
+                                <span dangerouslySetInnerHTML={{ __html: formattedContent }} />
+                              </div>
+                            );
+                          }
+                          
+                          // Check if it's a bullet list
+                          if (/^[•\-\*]\s/.test(trimmedLine)) {
+                            const content = trimmedLine.replace(/^[•\-\*]\s*/, '').trim();
+                            const formattedContent = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                            return (
+                              <div key={idx} className="ml-4 text-gray-700 leading-relaxed">
+                                <span className="font-semibold mr-2">•</span>
+                                <span dangerouslySetInnerHTML={{ __html: formattedContent }} />
+                              </div>
+                            );
+                          }
+                          
+                          // Check if it's a heading (text followed by colon)
+                          if (trimmedLine.endsWith(':') && trimmedLine.length < 100) {
+                            return (
+                              <h4 key={idx} className="font-semibold text-gray-800 text-base mt-3 mb-1">
+                                {trimmedLine}
+                              </h4>
+                            );
+                          }
+                          
+                          // Regular paragraph with bold text support
+                          const formattedLine = trimmedLine.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                          return (
+                            <p key={idx} className="text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine }} />
+                          );
+                        })}
+                      </div>
                     )}
                     {msg.file && (
                       <div className="mt-1 flex items-center gap-2">

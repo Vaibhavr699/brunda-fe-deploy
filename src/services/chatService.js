@@ -49,9 +49,12 @@ export const chatService = {
     }
 
     const data = await response.json();
+    const message = data?.message || {};
     return {
-      type: data?.message?.type || 'general_response',
-      data: data?.message?.data
+      type: message.type || 'general_response',
+      data: message.data,
+      // Include other fields from message for responses like image_response
+      ...message
     };
   },
 

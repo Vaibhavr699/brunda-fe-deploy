@@ -47,10 +47,8 @@ export const Sidebar = () => {
       const Icon = tab.icon;
       const handleClick = () => {
         if (tab.id === 'ai-co-founder' || tab.id === 'ai-assistant') {
-          // Stay within the app for AI features
           navigate(`/${tab.id}`);
         } else if (tab.id === 'logout') {
-          // Handle logout
           authService.logout();
         } else {
           const tabMap = {
