@@ -101,6 +101,23 @@ export const chatService = {
       }
       return null;
     }).filter(Boolean);
+  },
+
+  getTokenStats: async () => {
+    const url = `${BASE_URL}/api/chat/token`;
+    const response = await authFetch(url, { method: 'GET' });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get token stats: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const payload = data?.message ?? data ?? {};
+
+    const used = payload.used ?? payload.tokens_used ?? payload.used_tokens ?? payload.token_used ?? null;
+    const total = payload.total ?? payload.total_tokens ?? payload.tokens_total ?? payload.total_token ?? null;
+
+    return { used, total };
   }
 };
 

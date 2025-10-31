@@ -1,4 +1,4 @@
-import { FolderUp, Send, X, Download } from "lucide-react";
+import { FolderUp, Send, X, Download, AlertTriangle, Gauge, RotateCcw } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { chatService } from "../../services/chatService";
 import EntrepreneurialResponse from "../../components/EntrepreneurialResponse";
@@ -32,6 +32,20 @@ function reducer(state, action) {
       return { ...state, chats: action.payload };
     case "RESET_MESSAGES":
       return { ...state, messages: [], currentChatId: null };
+    case "MARK_MESSAGE_FAILED":
+      return {
+        ...state,
+        messages: state.messages.map((m) =>
+          m.id === action.payload.id ? { ...m, failed: true } : m
+        ),
+      };
+    case "CLEAR_MESSAGE_FAILED":
+      return {
+        ...state,
+        messages: state.messages.map((m) =>
+          m.id === action.payload.id ? { ...m, failed: false } : m
+        ),
+      };
     default:
       return state;
   }
@@ -44,6 +58,7 @@ export const ChatWindow = ({ activeTab }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [tokenStats, setTokenStats] = useState({ total: null, used: null });
 
   const isCoFounder = activeTab === "ai-co-founder";
 
@@ -62,6 +77,15 @@ export const ChatWindow = ({ activeTab }) => {
 
     if (isCoFounder) {
       loadAllChats();
+      // Initial token stats fetch
+      (async () => {
+        try {
+          const stats = await chatService.getTokenStats();
+          setTokenStats(stats);
+        } catch (e) {
+          // fail silently for now
+        }
+      })();
     }
   }, [isCoFounder]);
 
@@ -79,13 +103,13 @@ export const ChatWindow = ({ activeTab }) => {
     try {
       dispatch({ type: "SET_STATUS", payload: "creating" });
       const { chatId } = await chatService.createNewChat();
-      
+
       dispatch({ type: "SET_CURRENT_CHAT", payload: chatId });
       dispatch({ type: "RESET_MESSAGES" });
       dispatch({ type: "SET_CURRENT_CHAT", payload: chatId });
-      
+
       await loadAllChats();
-      
+
       dispatch({ type: "SET_STATUS", payload: "idle" });
     } catch (err) {
       console.error('Failed to create new chat:', err);
@@ -111,7 +135,7 @@ export const ChatWindow = ({ activeTab }) => {
     if (!draft.trim() && !uploadingFile) return;
 
     let chatId = state.currentChatId;
-    
+
     if (!chatId) {
       try {
         const { chatId: newChatId } = await chatService.createNewChat();
@@ -173,7 +197,15 @@ export const ChatWindow = ({ activeTab }) => {
 
       dispatch({ type: "ADD_MESSAGE", payload: aiMsg });
       dispatch({ type: "SET_STATUS", payload: "idle" });
+
+      // Refresh token stats after successful response
+      try {
+        const stats = await chatService.getTokenStats();
+        setTokenStats(stats);
+      } catch { }
     } catch (err) {
+      // mark the just-sent user message as failed
+      dispatch({ type: "MARK_MESSAGE_FAILED", payload: { id: userMsg.id } });
       dispatch({
         type: "SET_ERROR",
         payload: err.message || "Failed to send message",
@@ -205,19 +237,19 @@ export const ChatWindow = ({ activeTab }) => {
       // Fetch the image
       const response = await fetch(imageUrl);
       const blob = await response.blob();
-      
+
       // Create a temporary URL for the blob
       const blobUrl = window.URL.createObjectURL(blob);
-      
+
       // Create a temporary anchor element
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = `generated-logo-${Date.now()}.png`; // Default filename
       document.body.appendChild(link);
-      
+
       // Trigger the download
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
@@ -225,6 +257,46 @@ export const ChatWindow = ({ activeTab }) => {
       console.error('Failed to download image:', error);
       // Fallback to opening in new tab if download fails
       window.open(imageUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleRetrySend = async (failedMsg) => {
+    if (!failedMsg || failedMsg.sender !== 'user') return;
+    const content = failedMsg.text;
+    let chatId = state.currentChatId;
+    if (!chatId) return; // should exist since we created it before sending
+
+    dispatch({ type: "SET_STATUS", payload: "sending" });
+    try {
+      const response = await chatService.sendMessage(chatId, content);
+      // clear failed flag on this user message
+      dispatch({ type: "CLEAR_MESSAGE_FAILED", payload: { id: failedMsg.id } });
+
+      const aiTimestamp = new Date().toLocaleString("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+        month: "short",
+        day: "numeric",
+      });
+      const aiMsg = {
+        id: `${Date.now()}-ai`,
+        sender: "ai",
+        text: response.type === 'general_response' ? response.data : '',
+        type: response.type,
+        payload: response,
+        timestamp: aiTimestamp,
+      };
+      dispatch({ type: "ADD_MESSAGE", payload: aiMsg });
+      dispatch({ type: "SET_STATUS", payload: "idle" });
+
+      try {
+        const stats = await chatService.getTokenStats();
+        setTokenStats(stats);
+      } catch { }
+    } catch (err) {
+      // keep as failed
+      dispatch({ type: "SET_STATUS", payload: "idle" });
     }
   };
 
@@ -258,6 +330,44 @@ export const ChatWindow = ({ activeTab }) => {
           <p className="text-sm md:text-lg text-gray-500">
             Get instant answers on launching, managing, or scaling your startup
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {(() => {
+            const totalLimit = typeof tokenStats.total === 'number' ? tokenStats.total : 20000;
+            const usedValue = typeof tokenStats.used === 'number' ? tokenStats.used : 0;
+            const exhausted = usedValue >= totalLimit && totalLimit > 0;
+
+            if (exhausted) {
+              return (
+                <div className="min-w-[220px] bg-red-50 border border-red-200 rounded-lg p-3 shadow-sm">
+                  <div className="flex items-center justify-center py-1">
+                  <AlertTriangle size={16} className="text-red-600 mr-2" />
+                    <span className="text-sm font-semibold text-red-700">All tokens are used</span>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="min-w-[220px] bg-gray-50 border border-gray-300 rounded-lg p-3 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Gauge size={16} className="text-gray-600" />
+                  <span className="text-xs font-bold text-gray-700">Tokens</span>
+                </div>
+                <div className="flex items-stretch gap-6 justify-center">
+                  <div className="flex flex-col items-start">
+                    <span className="text-[11px] uppercase tracking-wide text-gray-500">Used</span>
+                    <span className="text-xl font-mono tabular-nums font-semibold text-gray-900">{typeof tokenStats.used === 'number' ? tokenStats.used.toLocaleString() : (tokenStats.used ?? '—')}</span>
+                  </div>
+                  <div className="w-px bg-gray-200" />
+                  <div className="flex flex-col items-start">
+                    <span className="text-[11px] uppercase tracking-wide text-gray-500">Total</span>
+                    <span className="text-xl font-mono tabular-nums font-semibold text-gray-900">{typeof tokenStats.total === 'number' ? tokenStats.total.toLocaleString() : (tokenStats.total ?? '—')}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </header>
 
@@ -311,15 +421,15 @@ export const ChatWindow = ({ activeTab }) => {
                 >
                   <div
                     className={`max-w-full sm:max-w-xs md:max-w-md p-3 rounded-xl shadow ${msg.sender === "ai"
-                        ? "bg-gray-100 text-gray-800"
-                        : "bg-blue-600 text-white"
+                      ? "bg-gray-100 text-gray-800"
+                      : "bg-blue-600 text-white"
                       }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-sm">
+                      <span className="font-semibold text-sm text-gray-300">
                         {msg.sender === "ai" ? "AI Co-founder" : "You"}
                       </span>
-                      <span className={`text-xs ml-1 ${msg.sender === "ai" ? "text-gray-500" : "text-gray-300"}`}>
+                      <span className={`text-xs ml-1 ${msg.sender === "ai" ? "text-gray-600" : "text-gray-300"}`}>
                         {msg.timestamp}
                       </span>
                     </div>
@@ -330,9 +440,9 @@ export const ChatWindow = ({ activeTab }) => {
                     ) : msg.type === "image_response" && msg.payload?.logo ? (
                       <div className="flex flex-col gap-2">
                         <div className="relative group">
-                          <img 
-                            src={msg.payload.logo} 
-                            alt="Generated logo" 
+                          <img
+                            src={msg.payload.logo}
+                            alt="Generated logo"
                             className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm"
                             onError={(e) => {
                               e.target.style.display = 'none';
@@ -355,12 +465,12 @@ export const ChatWindow = ({ activeTab }) => {
                       <div className="text-base md:text-lg space-y-4">
                         {msg.text.split('\n').map((line, idx) => {
                           const trimmedLine = line.trim();
-                          
+
                           // Skip empty lines
                           if (!trimmedLine) {
                             return <div key={idx} className="h-2" />;
                           }
-                          
+
                           // Check for bold markdown headings (e.g., **Domain**: or **Problem**)
                           const boldHeadingMatch = trimmedLine.match(/^\*\*([^*]+)\*\*:?\s*(.*)$/);
                           if (boldHeadingMatch) {
@@ -378,7 +488,7 @@ export const ChatWindow = ({ activeTab }) => {
                               </div>
                             );
                           }
-                          
+
                           // Check if it's a numbered list item
                           if (/^\d+\./.test(trimmedLine)) {
                             const content = trimmedLine.replace(/^\d+\.\s*/, '').trim();
@@ -391,7 +501,7 @@ export const ChatWindow = ({ activeTab }) => {
                               </div>
                             );
                           }
-                          
+
                           // Check if it's a bullet list
                           if (/^[•\-\*]\s/.test(trimmedLine)) {
                             const content = trimmedLine.replace(/^[•\-\*]\s*/, '').trim();
@@ -403,7 +513,7 @@ export const ChatWindow = ({ activeTab }) => {
                               </div>
                             );
                           }
-                          
+
                           // Check if it's a heading (text followed by colon)
                           if (trimmedLine.endsWith(':') && trimmedLine.length < 100) {
                             return (
@@ -412,7 +522,7 @@ export const ChatWindow = ({ activeTab }) => {
                               </h4>
                             );
                           }
-                          
+
                           // Regular paragraph with bold text support
                           const formattedLine = trimmedLine.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
                           return (
@@ -424,12 +534,12 @@ export const ChatWindow = ({ activeTab }) => {
                       <div className="text-base md:text-lg space-y-4">
                         {msg.text.split('\n').map((line, idx) => {
                           const trimmedLine = line.trim();
-                          
+
                           // Skip empty lines
                           if (!trimmedLine) {
                             return <div key={idx} className="h-2" />;
                           }
-                          
+
                           // Check for bold markdown headings (e.g., **Domain**: or **Problem**)
                           const boldHeadingMatch = trimmedLine.match(/^\*\*([^*]+)\*\*:?\s*(.*)$/);
                           if (boldHeadingMatch) {
@@ -447,7 +557,7 @@ export const ChatWindow = ({ activeTab }) => {
                               </div>
                             );
                           }
-                          
+
                           // Check if it's a numbered list item
                           if (/^\d+\./.test(trimmedLine)) {
                             const content = trimmedLine.replace(/^\d+\.\s*/, '').trim();
@@ -460,7 +570,7 @@ export const ChatWindow = ({ activeTab }) => {
                               </div>
                             );
                           }
-                          
+
                           // Check if it's a bullet list
                           if (/^[•\-\*]\s/.test(trimmedLine)) {
                             const content = trimmedLine.replace(/^[•\-\*]\s*/, '').trim();
@@ -472,7 +582,7 @@ export const ChatWindow = ({ activeTab }) => {
                               </div>
                             );
                           }
-                          
+
                           // Check if it's a heading (text followed by colon)
                           if (trimmedLine.endsWith(':') && trimmedLine.length < 100) {
                             return (
@@ -481,11 +591,11 @@ export const ChatWindow = ({ activeTab }) => {
                               </h4>
                             );
                           }
-                          
+
                           // Regular paragraph with bold text support
                           const formattedLine = trimmedLine.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
                           return (
-                            <p key={idx} className="text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine }} />
+                            <p key={idx} className="text-white leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine }} />
                           );
                         })}
                       </div>
@@ -495,6 +605,19 @@ export const ChatWindow = ({ activeTab }) => {
                         <span className="text-xs truncate max-w-xs">
                           {msg.file.name}
                         </span>
+                      </div>
+                    )}
+                    {msg.sender === 'user' && msg.failed && (
+                      <div className="mt-2 flex justify-start">
+                        <button
+                          type="button"
+                          title="Retry"
+                          onClick={() => handleRetrySend(msg)}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs border cursor-pointer transition-colors text-white hover:text-white bg-red-500/80 hover:bg-red-600/80 border-red-500/20`}
+                        >
+                          <RotateCcw size={16} />
+                          <span>Retry</span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -546,7 +669,7 @@ export const ChatWindow = ({ activeTab }) => {
                       viewBox="0 0 36 36"
                     >
                       <circle className="text-gray-300" strokeWidth="4" stroke="currentColor" fill="transparent" r="16" cx="18" cy="18" />
-                      <circle className="text-green-400" strokeWidth="4" strokeDasharray="100" strokeDashoffset={100 - uploadProgress} strokeLinecap="round" stroke="currentColor" fill="transparent" r="16" cx="18" cy="18"/>
+                      <circle className="text-green-400" strokeWidth="4" strokeDasharray="100" strokeDashoffset={100 - uploadProgress} strokeLinecap="round" stroke="currentColor" fill="transparent" r="16" cx="18" cy="18" />
                     </svg>
                     <button
                       type="button"

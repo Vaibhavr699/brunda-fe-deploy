@@ -1,4 +1,4 @@
-import { tokenStorage } from '../utils/tokenStorage';
+import { tokenStorage, getSidFromUrl } from '../utils/tokenStorage';
 
 const BASE_URL = import.meta.env.VITE_CHAT_API_BASE_URL;
 const AUTH_ENDPOINT = `${BASE_URL}/api/bubble/auth/`;
@@ -7,8 +7,10 @@ const EXTERNAL_DASHBOARD_URL = import.meta.env.VITE_EXTERNAL_DASHBOARD_URL;
 
 export const authService = {
   getSidForAuth: () => {
-    // Hardcoded session ID as requested
-    return 'fe9964a0-e35c-4239-8b6f-d8ec35b9bbcb';
+    // Prefer sid from URL first, then from storage
+    const urlSid = getSidFromUrl();
+    if (urlSid) return urlSid;
+    return tokenStorage.getSid();
   },
 
   authenticateWithSid: async (sid) => {
@@ -54,6 +56,10 @@ export const authService = {
 
   initializeAuth: async () => {
     const sid = authService.getSidForAuth();
+    if (!sid) {
+      if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL;
+      throw new Error('Missing session id (sid)');
+    }
     const { accessToken, refreshToken } = await authService.authenticateWithSid(sid);
     tokenStorage.setTokens(accessToken, refreshToken, sid);
     return accessToken;
@@ -69,6 +75,9 @@ export { EXTERNAL_DASHBOARD_URL };
 
 export const authFetch = async (input, init = {}) => {
   let token = tokenStorage.getAccessToken();
+  const maxUnauthorizedAttempts = 2;
+  // keep an in-memory counter across calls
+  authFetch._unauthorizedAttempts = authFetch._unauthorizedAttempts || 0;
   
   const makeRequest = (authToken) => {
     const headers = {
@@ -83,21 +92,46 @@ export const authFetch = async (input, init = {}) => {
   let response = await makeRequest(token);
 
   if (response.status === 401) {
+    authFetch._unauthorizedAttempts += 1;
+    if (authFetch._unauthorizedAttempts >= maxUnauthorizedAttempts) {
+      // redirect to external dashboard after two failed attempts
+      if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL;
+      throw new Error('Unauthorized');
+    }
     const refreshToken = tokenStorage.getRefreshToken();
     
     if (!refreshToken) {
-      authService.logout();
-      return;
-    }
-
-    try {
-      const newAccessToken = await authService.refreshAccessToken(refreshToken);
-      tokenStorage.setTokens(newAccessToken);
-      response = await makeRequest(newAccessToken);
-    } catch (error) {
-      console.error('Token refresh error:', error);
-      authService.logout();
-      return;
+      // Try authenticating using sid once before redirecting
+      try {
+        const sid = authService.getSidForAuth();
+        if (!sid) throw new Error('No SID');
+        const { accessToken, refreshToken: newRefresh } = await authService.authenticateWithSid(sid);
+        token = accessToken;
+        tokenStorage.setTokens(accessToken, newRefresh, sid);
+        response = await makeRequest(token);
+      } catch (e) {
+        if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL;
+        throw e;
+      }
+    } else {
+      try {
+        const newAccessToken = await authService.refreshAccessToken(refreshToken);
+        tokenStorage.setTokens(newAccessToken);
+        response = await makeRequest(newAccessToken);
+      } catch (error) {
+        console.error('Token refresh error:', error);
+        // Attempt SID auth before redirect
+        try {
+          const sid = authService.getSidForAuth();
+          if (!sid) throw new Error('No SID');
+          const { accessToken, refreshToken: newRefresh } = await authService.authenticateWithSid(sid);
+          tokenStorage.setTokens(accessToken, newRefresh, sid);
+          response = await makeRequest(accessToken);
+        } catch (e) {
+          if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL;
+          throw e;
+        }
+      }
     }
   }
 
