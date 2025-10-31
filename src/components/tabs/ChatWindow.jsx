@@ -1,6 +1,7 @@
 import { FolderUp, Send, X, Download, AlertTriangle, Gauge, RotateCcw } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { chatService } from "../../services/chatService";
+import { authService } from "../../services/authService";
 import EntrepreneurialResponse from "../../components/EntrepreneurialResponse";
 import ThinkingLoader from "../ThinkingLoader";
 
@@ -76,15 +77,19 @@ export const ChatWindow = ({ activeTab }) => {
     if (saved) setDraft(saved);
 
     if (isCoFounder) {
-      loadAllChats();
-      // Initial token stats fetch
       (async () => {
+        try {
+          await authService.initializeAuth();
+        } catch (e) {
+          // ignore; authFetch will still attempt on demand
+        }
+        // Token first, then history
         try {
           const stats = await chatService.getTokenStats();
           setTokenStats(stats);
         } catch (e) {
-          // fail silently for now
         }
+        await loadAllChats();
       })();
     }
   }, [isCoFounder]);

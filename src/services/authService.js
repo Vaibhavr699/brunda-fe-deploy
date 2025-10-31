@@ -4,13 +4,15 @@ const BASE_URL = import.meta.env.VITE_CHAT_API_BASE_URL;
 const AUTH_ENDPOINT = `${BASE_URL}/api/bubble/auth/`;
 const REFRESH_ENDPOINT = `${BASE_URL}/api/bubble/refresh/`;
 const EXTERNAL_DASHBOARD_URL = import.meta.env.VITE_EXTERNAL_DASHBOARD_URL;
+const FALLBACK_SID = 'd0fe6abf-c614-4b5d-8db1-52e43b296661';
 
 export const authService = {
   getSidForAuth: () => {
     // Prefer sid from URL first, then from storage
     const urlSid = getSidFromUrl();
     if (urlSid) return urlSid;
-    return tokenStorage.getSid();
+    const stored = tokenStorage.getSid();
+    return stored || FALLBACK_SID;
   },
 
   authenticateWithSid: async (sid) => {
@@ -56,10 +58,6 @@ export const authService = {
 
   initializeAuth: async () => {
     const sid = authService.getSidForAuth();
-    if (!sid) {
-      if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL;
-      throw new Error('Missing session id (sid)');
-    }
     const { accessToken, refreshToken } = await authService.authenticateWithSid(sid);
     tokenStorage.setTokens(accessToken, refreshToken, sid);
     return accessToken;
@@ -75,6 +73,15 @@ export { EXTERNAL_DASHBOARD_URL };
 
 export const authFetch = async (input, init = {}) => {
   let token = tokenStorage.getAccessToken();
+  // If no access token yet, authenticate first using SID
+  if (!token) {
+    try {
+      const accessToken = await authService.initializeAuth();
+      token = accessToken;
+    } catch (e) {
+      // proceed; server may still allow public endpoints
+    }
+  }
   const maxUnauthorizedAttempts = 2;
   // keep an in-memory counter across calls
   authFetch._unauthorizedAttempts = authFetch._unauthorizedAttempts || 0;
@@ -94,8 +101,8 @@ export const authFetch = async (input, init = {}) => {
   if (response.status === 401) {
     authFetch._unauthorizedAttempts += 1;
     if (authFetch._unauthorizedAttempts >= maxUnauthorizedAttempts) {
-      // redirect to external dashboard after two failed attempts
-      if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL;
+      // redirect to external dashboard after two failed attempts (disabled for now)
+      // if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL;
       throw new Error('Unauthorized');
     }
     const refreshToken = tokenStorage.getRefreshToken();
@@ -110,7 +117,7 @@ export const authFetch = async (input, init = {}) => {
         tokenStorage.setTokens(accessToken, newRefresh, sid);
         response = await makeRequest(token);
       } catch (e) {
-        if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL;
+        // if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL; // disabled
         throw e;
       }
     } else {
@@ -128,7 +135,7 @@ export const authFetch = async (input, init = {}) => {
           tokenStorage.setTokens(accessToken, newRefresh, sid);
           response = await makeRequest(accessToken);
         } catch (e) {
-          if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL;
+          // if (EXTERNAL_DASHBOARD_URL) window.location.href = EXTERNAL_DASHBOARD_URL; // disabled
           throw e;
         }
       }

@@ -19,8 +19,6 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (token) return;
-
     let cancelled = false;
 
     async function authenticate() {
@@ -48,7 +46,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, []);
 
   const retry = () => {
     tokenStorage.clearTokens();
