@@ -354,18 +354,18 @@ export const ChatWindow = ({ activeTab }) => {
             }
 
             return (
-              <div className="min-w-[220px] bg-gray-50 border border-gray-300 rounded-lg p-3 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="min-w-[220px] bg-gray-50 border border-gray-300 rounded-lg p-2 shadow-sm">
+                <div className="flex items-center justify-center gap-2 mb-2">
                   <Gauge size={16} className="text-gray-600" />
                   <span className="text-xs font-bold text-gray-700">Tokens</span>
                 </div>
                 <div className="flex items-stretch gap-6 justify-center">
-                  <div className="flex flex-col items-start">
+                  <div className="flex flex-col items-center">
                     <span className="text-[11px] uppercase tracking-wide text-gray-500">Used</span>
                     <span className="text-xl font-mono tabular-nums font-semibold text-gray-900">{typeof tokenStats.used === 'number' ? tokenStats.used.toLocaleString() : (tokenStats.used ?? '—')}</span>
                   </div>
                   <div className="w-px bg-gray-200" />
-                  <div className="flex flex-col items-start">
+                  <div className="flex flex-col items-center">
                     <span className="text-[11px] uppercase tracking-wide text-gray-500">Total</span>
                     <span className="text-xl font-mono tabular-nums font-semibold text-gray-900">{typeof tokenStats.total === 'number' ? tokenStats.total.toLocaleString() : (tokenStats.total ?? '—')}</span>
                   </div>

@@ -4,7 +4,6 @@ const BASE_URL = import.meta.env.VITE_CHAT_API_BASE_URL;
 const AUTH_ENDPOINT = `${BASE_URL}/api/bubble/auth/`;
 const REFRESH_ENDPOINT = `${BASE_URL}/api/bubble/refresh/`;
 const EXTERNAL_DASHBOARD_URL = import.meta.env.VITE_EXTERNAL_DASHBOARD_URL;
-const FALLBACK_SID = 'd0fe6abf-c614-4b5d-8db1-52e43b296661';
 
 export const authService = {
   getSidForAuth: () => {
@@ -20,7 +19,7 @@ export const authService = {
         if (sid) tokenStorage.setSid(sid);
       } catch {}
     }
-    return sid || FALLBACK_SID;
+    return sid || null;
   },
 
   authenticateWithSid: async (sid) => {
@@ -66,6 +65,7 @@ export const authService = {
 
   initializeAuth: async () => {
     const sid = authService.getSidForAuth();
+    if (!sid) throw new Error('Missing session id (sid)');
     const { accessToken, refreshToken } = await authService.authenticateWithSid(sid);
     tokenStorage.setTokens(accessToken, refreshToken, sid);
     return accessToken;
