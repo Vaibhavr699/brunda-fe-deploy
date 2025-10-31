@@ -37,6 +37,14 @@ export const tokenStorage = {
     }
   },
 
+  setSid: (sid) => {
+    try {
+      if (sid) localStorage.setItem(SID_KEY, sid);
+    } catch (error) {
+      console.error('Failed to store sid:', error);
+    }
+  },
+
   clearTokens: () => {
     try {
       localStorage.removeItem(JWT_KEY);

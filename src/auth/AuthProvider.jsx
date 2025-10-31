@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { tokenStorage } from '../utils/tokenStorage';
 
@@ -17,6 +18,8 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => tokenStorage.getAccessToken());
   const [loading, setLoading] = useState(() => !tokenStorage.hasValidToken());
   const [error, setError] = useState(null);
+
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     let cancelled = false;
@@ -41,12 +44,16 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
+    // Capture sid from router params and persist for authService
+    const sidParam = searchParams.get('sid');
+    if (sidParam) tokenStorage.setSid(sidParam);
+
     authenticate();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [searchParams]);
 
   const retry = () => {
     tokenStorage.clearTokens();

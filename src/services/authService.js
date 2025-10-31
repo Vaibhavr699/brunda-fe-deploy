@@ -1,4 +1,4 @@
-import { tokenStorage, getSidFromUrl } from '../utils/tokenStorage';
+import { tokenStorage } from '../utils/tokenStorage';
 
 const BASE_URL = import.meta.env.VITE_CHAT_API_BASE_URL;
 const AUTH_ENDPOINT = `${BASE_URL}/api/bubble/auth/`;
@@ -8,11 +8,19 @@ const FALLBACK_SID = 'd0fe6abf-c614-4b5d-8db1-52e43b296661';
 
 export const authService = {
   getSidForAuth: () => {
-    // Prefer sid from URL first, then from storage
-    const urlSid = getSidFromUrl();
-    if (urlSid) return urlSid;
-    const stored = tokenStorage.getSid();
-    return stored || FALLBACK_SID;
+    // Prefer stored sid; if missing, try reading from current URL (query or hash), then persist
+    let sid = tokenStorage.getSid();
+    if (!sid) {
+      try {
+        const search = typeof window !== 'undefined' ? window.location.search : '';
+        const hash = typeof window !== 'undefined' ? window.location.hash : '';
+        const fromSearch = new URLSearchParams(search).get('sid');
+        const fromHash = hash && hash.includes('sid=') ? new URLSearchParams(hash.replace(/^#\/?/, '').split('?')[1] || hash.replace(/^#\/?/, '')).get('sid') : null;
+        sid = fromSearch || fromHash || null;
+        if (sid) tokenStorage.setSid(sid);
+      } catch {}
+    }
+    return sid || FALLBACK_SID;
   },
 
   authenticateWithSid: async (sid) => {
