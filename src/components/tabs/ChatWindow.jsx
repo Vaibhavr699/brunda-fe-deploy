@@ -658,7 +658,7 @@ export const ChatWindow = ({ activeTab }) => {
                 onChange={handleFileChange}
               />
 
-              <div className="relative ml-2 flex-shrink-0">
+              {/* <div className="relative ml-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current.click()}
@@ -690,7 +690,7 @@ export const ChatWindow = ({ activeTab }) => {
                     </button>
                   </>
                 )}
-              </div>
+              </div> */}
 
               <button
                 type="submit"
