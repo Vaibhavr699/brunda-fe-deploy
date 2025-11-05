@@ -468,7 +468,7 @@ export const ChatWindow = ({ activeTab }) => {
                       </div>
                     ) : msg.type === "general_response" ? (
                       <div className="text-base md:text-lg space-y-4">
-                        {msg.text.split('\n').map((line, idx) => {
+                        {(typeof msg.text === 'string' ? msg.text : String(msg.text ?? '')).split('\n').map((line, idx) => {
                           const trimmedLine = line.trim();
 
                           // Skip empty lines
@@ -537,7 +537,7 @@ export const ChatWindow = ({ activeTab }) => {
                       </div>
                     ) : (
                       <div className="text-base md:text-lg space-y-4">
-                        {msg.text.split('\n').map((line, idx) => {
+                        {(typeof msg.text === 'string' ? msg.text : String(msg.text ?? '')).split('\n').map((line, idx) => {
                           const trimmedLine = line.trim();
 
                           // Skip empty lines
