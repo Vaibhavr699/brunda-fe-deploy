@@ -90,8 +90,39 @@ export const chatService = {
           if (typeof msg.agent.data === 'string') {
             textContent = msg.agent.data;
           } else if (msg.agent.data && typeof msg.agent.data === 'object') {
-            // If data is an object, try to extract text property or stringify it
-            textContent = msg.agent.data.text || msg.agent.data.message || JSON.stringify(msg.agent.data);
+            // Helper function to format object data into readable text
+            const formatObjectData = (obj) => {
+              if (!obj || typeof obj !== 'object') return String(obj ?? '');
+              
+              // If it has a text or message property, use that
+              if (obj.text) return obj.text;
+              if (obj.message) return obj.message;
+              
+              // Format object as key-value pairs
+              const entries = Object.entries(obj);
+              return entries.map(([key, value]) => {
+                // Format key: convert camelCase to Title Case
+                const formattedKey = key
+                  .replace(/([A-Z])/g, ' $1')
+                  .replace(/^./, str => str.toUpperCase())
+                  .trim();
+                
+                // Format value
+                let formattedValue = value;
+                if (typeof value === 'object' && value !== null) {
+                  formattedValue = JSON.stringify(value, null, 2);
+                } else if (typeof value === 'number') {
+                  formattedValue = value.toLocaleString();
+                } else {
+                  formattedValue = String(value);
+                }
+                
+                return `${formattedKey}: ${formattedValue}`;
+              }).join('\n');
+            };
+            
+            // If data is an object, format it nicely
+            textContent = formatObjectData(msg.agent.data);
           } else {
             textContent = String(msg.agent.data ?? '');
           }

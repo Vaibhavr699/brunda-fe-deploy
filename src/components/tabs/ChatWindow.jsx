@@ -7,6 +7,37 @@ import ThinkingLoader from "../ThinkingLoader";
 
 const DRAFT_KEY = "chat_draft";
 
+// Helper function to format object data into readable text
+const formatObjectData = (obj) => {
+  if (!obj || typeof obj !== 'object') return String(obj ?? '');
+  
+  // If it has a text or message property, use that
+  if (obj.text) return obj.text;
+  if (obj.message) return obj.message;
+  
+  // Format object as key-value pairs
+  const entries = Object.entries(obj);
+  return entries.map(([key, value]) => {
+    // Format key: convert camelCase to Title Case
+    const formattedKey = key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase())
+      .trim();
+    
+    // Format value
+    let formattedValue = value;
+    if (typeof value === 'object' && value !== null) {
+      formattedValue = JSON.stringify(value, null, 2);
+    } else if (typeof value === 'number') {
+      formattedValue = value.toLocaleString();
+    } else {
+      formattedValue = String(value);
+    }
+    
+    return `${formattedKey}: ${formattedValue}`;
+  }).join('\n');
+};
+
 const initialState = {
   chats: [],
   messages: [],
@@ -197,8 +228,8 @@ export const ChatWindow = ({ activeTab }) => {
         if (typeof response.data === 'string') {
           textContent = response.data;
         } else if (response.data && typeof response.data === 'object') {
-          // If data is an object, try to extract text property or stringify it
-          textContent = response.data.text || response.data.message || JSON.stringify(response.data);
+          // If data is an object, format it nicely
+          textContent = formatObjectData(response.data);
         } else {
           textContent = String(response.data ?? '');
         }
@@ -303,8 +334,8 @@ export const ChatWindow = ({ activeTab }) => {
         if (typeof response.data === 'string') {
           textContent = response.data;
         } else if (response.data && typeof response.data === 'object') {
-          // If data is an object, try to extract text property or stringify it
-          textContent = response.data.text || response.data.message || JSON.stringify(response.data);
+          // If data is an object, format it nicely
+          textContent = formatObjectData(response.data);
         } else {
           textContent = String(response.data ?? '');
         }
