@@ -191,10 +191,23 @@ export const ChatWindow = ({ activeTab }) => {
         day: "numeric",
       });
 
+      // Extract text content from response.data, handling both string and object cases
+      let textContent = '';
+      if (response.type === 'general_response') {
+        if (typeof response.data === 'string') {
+          textContent = response.data;
+        } else if (response.data && typeof response.data === 'object') {
+          // If data is an object, try to extract text property or stringify it
+          textContent = response.data.text || response.data.message || JSON.stringify(response.data);
+        } else {
+          textContent = String(response.data ?? '');
+        }
+      }
+
       const aiMsg = {
         id: `${Date.now()}-ai`,
         sender: "ai",
-        text: response.type === 'general_response' ? response.data : '',
+        text: textContent,
         type: response.type,
         payload: response,
         timestamp: aiTimestamp,
@@ -284,10 +297,23 @@ export const ChatWindow = ({ activeTab }) => {
         month: "short",
         day: "numeric",
       });
+      // Extract text content from response.data, handling both string and object cases
+      let textContent = '';
+      if (response.type === 'general_response') {
+        if (typeof response.data === 'string') {
+          textContent = response.data;
+        } else if (response.data && typeof response.data === 'object') {
+          // If data is an object, try to extract text property or stringify it
+          textContent = response.data.text || response.data.message || JSON.stringify(response.data);
+        } else {
+          textContent = String(response.data ?? '');
+        }
+      }
+
       const aiMsg = {
         id: `${Date.now()}-ai`,
         sender: "ai",
-        text: response.type === 'general_response' ? response.data : '',
+        text: textContent,
         type: response.type,
         payload: response,
         timestamp: aiTimestamp,

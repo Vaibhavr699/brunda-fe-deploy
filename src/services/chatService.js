@@ -84,11 +84,24 @@ export const chatService = {
           })
         };
       } else if (msg.agent) {
+        // Extract text content from msg.agent.data, handling both string and object cases
+        let textContent = '';
+        if (msg.agent.type === 'general_response') {
+          if (typeof msg.agent.data === 'string') {
+            textContent = msg.agent.data;
+          } else if (msg.agent.data && typeof msg.agent.data === 'object') {
+            // If data is an object, try to extract text property or stringify it
+            textContent = msg.agent.data.text || msg.agent.data.message || JSON.stringify(msg.agent.data);
+          } else {
+            textContent = String(msg.agent.data ?? '');
+          }
+        }
+
         return {
           id: `agent-${index}`,
           sender: 'ai',
           type: msg.agent.type || 'general_response',
-          text: msg.agent.type === 'general_response' ? msg.agent.data : '',
+          text: textContent,
           payload: msg.agent,
           timestamp: new Date().toLocaleString('en-US', {
             hour: 'numeric',
