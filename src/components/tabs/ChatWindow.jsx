@@ -10,11 +10,11 @@ const DRAFT_KEY = "chat_draft";
 // Helper function to format object data into readable text
 const formatObjectData = (obj) => {
   if (!obj || typeof obj !== 'object') return String(obj ?? '');
-  
+
   // If it has a text or message property, use that
   if (obj.text) return obj.text;
   if (obj.message) return obj.message;
-  
+
   // Field name mappings for better display
   const fieldNameMap = {
     'formattedAddress': 'Address',
@@ -25,22 +25,22 @@ const formatObjectData = (obj) => {
     'user_rating_count': 'Rating Count',
     'place_name': 'Place Name',
   };
-  
+
   // Fields to exclude from display
   const excludedFields = ['id'];
-  
+
   // Format object as key-value pairs - only show fields that exist and have values
   const entries = Object.entries(obj)
-    .filter(([key, value]) => 
+    .filter(([key, value]) =>
       !excludedFields.includes(key) && // Filter out excluded fields
       value !== undefined && // Don't show undefined values
       value !== null // Don't show null values
     );
-  
+
   return entries.map(([key, value]) => {
     // Use mapped field name if available
     let formattedKey = fieldNameMap[key];
-    
+
     // If no mapping, format key: handle both camelCase and snake_case
     if (!formattedKey) {
       formattedKey = key
@@ -50,7 +50,7 @@ const formatObjectData = (obj) => {
         .replace(/\s+/g, ' ') // Replace multiple spaces with single space
         .trim();
     }
-    
+
     // Format value
     let formattedValue = value;
     if (typeof value === 'object' && value !== null) {
@@ -60,7 +60,7 @@ const formatObjectData = (obj) => {
     } else {
       formattedValue = String(value);
     }
-    
+
     return `${formattedKey}: ${formattedValue}`;
   }).join('\n');
 };
@@ -430,7 +430,7 @@ export const ChatWindow = ({ activeTab }) => {
               return (
                 <div className="min-w-[220px] bg-red-50 border border-red-200 rounded-lg p-3 shadow-sm">
                   <div className="flex items-center justify-center py-1">
-                  <AlertTriangle size={16} className="text-red-600 mr-2" />
+                    <AlertTriangle size={16} className="text-red-600 mr-2" />
                     <span className="text-sm font-semibold text-red-700">All tokens are used</span>
                   </div>
                 </div>
@@ -474,22 +474,25 @@ export const ChatWindow = ({ activeTab }) => {
           </div>
           <div className="overflow-y-auto flex-1">
             {state.chats.length > 0 ? (
-              state.chats.map((chat) => (
-                <div
-                  key={chat.id}
-                  className={`p-4 hover:bg-gray-100 cursor-pointer border-b border-gray-200 text-sm text-gray-800 truncate ${state.currentChatId === chat.id ? "bg-gray-200" : ""
-                    }`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => loadChatHistory(chat.id)}
-                >
-                  {chat.name}
-                </div>
-              ))
+              [...state.chats]
+                .reverse()
+                .map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={`p-4 hover:bg-gray-100 cursor-pointer border-b border-gray-200 text-sm text-gray-800 truncate ${state.currentChatId === chat.id ? "bg-gray-200" : ""
+                      }`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => loadChatHistory(chat.id)}
+                  >
+                    {chat.name}
+                  </div>
+                ))
             ) : (
               <div className="p-4 text-gray-500">No chats yet</div>
             )}
           </div>
+
         </aside>
 
         <section className="flex-1 flex flex-col w-full border border-gray-200 rounded-r-xl">
