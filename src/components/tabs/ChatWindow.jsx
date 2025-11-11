@@ -18,23 +18,38 @@ const formatObjectData = (obj) => {
   // Field name mappings for better display
   const fieldNameMap = {
     'formattedAddress': 'Address',
+    'formatted_address': 'Address',
     'rating': 'Rating',
+    'average_rating': 'Rating',
     'userRatingCount': 'Rating Count',
+    'user_rating_count': 'Rating Count',
+    'place_name': 'Place Name',
   };
   
   // Fields to exclude from display
   const excludedFields = ['id'];
   
-  // Format object as key-value pairs
+  // Format object as key-value pairs - only show fields that exist and have values
   const entries = Object.entries(obj)
-    .filter(([key]) => !excludedFields.includes(key)); // Filter out excluded fields
+    .filter(([key, value]) => 
+      !excludedFields.includes(key) && // Filter out excluded fields
+      value !== undefined && // Don't show undefined values
+      value !== null // Don't show null values
+    );
   
   return entries.map(([key, value]) => {
-    // Use mapped field name if available, otherwise format key: convert camelCase to Title Case
-    const formattedKey = fieldNameMap[key] || key
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
-      .trim();
+    // Use mapped field name if available
+    let formattedKey = fieldNameMap[key];
+    
+    // If no mapping, format key: handle both camelCase and snake_case
+    if (!formattedKey) {
+      formattedKey = key
+        .replace(/_/g, ' ') // Replace underscores with spaces
+        .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+        .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .trim();
+    }
     
     // Format value
     let formattedValue = value;
