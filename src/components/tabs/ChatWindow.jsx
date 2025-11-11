@@ -15,11 +15,23 @@ const formatObjectData = (obj) => {
   if (obj.text) return obj.text;
   if (obj.message) return obj.message;
   
+  // Field name mappings for better display
+  const fieldNameMap = {
+    'formattedAddress': 'Address',
+    'rating': 'Rating',
+    'userRatingCount': 'Rating Count',
+  };
+  
+  // Fields to exclude from display
+  const excludedFields = ['id'];
+  
   // Format object as key-value pairs
-  const entries = Object.entries(obj);
+  const entries = Object.entries(obj)
+    .filter(([key]) => !excludedFields.includes(key)); // Filter out excluded fields
+  
   return entries.map(([key, value]) => {
-    // Format key: convert camelCase to Title Case
-    const formattedKey = key
+    // Use mapped field name if available, otherwise format key: convert camelCase to Title Case
+    const formattedKey = fieldNameMap[key] || key
       .replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase())
       .trim();
